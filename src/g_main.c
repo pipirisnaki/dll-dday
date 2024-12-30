@@ -428,88 +428,138 @@ char *Get_Next_MaplistTxt_Map ()
 	char *maplisttxt[300];
 
 
-	maps = ReadEntFile("dday/maplist.txt");
+	// Leer el contenido del archivo
+    maps = ReadEntFile("dday/maplist.ini");
+    if (!maps)
+    {
+        gi_dprintf("ERROR: No se pudo leer 'dday/maplist.ini'.\n");
+        return NULL;
+    }
 
-	mapcount = 0;
+    // Hacer una copia del contenido para tokenizar
+    f = strdup(maps);
+    if (!f)
+    {
+        gi_dprintf("ERROR: No se pudo duplicar el contenido de 'maplist.ini'.\n");
+        return NULL;
+    }
 
-	if (maps)
-	{
-		c = 0;
-		f = strdup (maps);
-		s = strtok(f, "\n");
-		while (c < 300)
-		{
-			if (s != NULL) 
-			{
-				if (MapExists(s))
-				{
-					maplisttxt[c] = s;
-					mapcount++;
-					c++;
-				}
-				else
-					gi.dprintf("WARNING: Map '%s' in maplist.txt not found on server!\n",s);
+    // Tokenizar el contenido línea por línea
+    s = strtok(f, "\n");
+    while (s != NULL && mapcount < 300)
+    {
+        // Eliminar espacios en blanco al inicio y al final
+        char *line = s;
+        while (isspace(*line)) line++; // Trim izquierda
 
+        // Ignorar líneas en blanco
+        if (*line == '\0')
+        {
+            s = strtok(NULL, "\n");
+            continue;
+        }
 
+        // Ignorar comentarios
+        if (*line == ';')
+        {
+            s = strtok(NULL, "\n");
+            continue;
+        }
+        // Detectar el inicio de la sección [maplist]
+        if (!in_maplist_section)
+        {
+            if (strcasecmp(line, "[maplist]") == 0)
+            {
+                in_maplist_section = 1;
+            }
+            s = strtok(NULL, "\n");
+            continue;
+        }
 
-				s = strtok (NULL, "\n");
-			}
-			else
-			{maplisttxt[c] = ""; 
-			c++;}
+        // Detectar el fin de la sección [maplist]
+        if (strcmp(line, "###") == 0)
+        {
+            break; // Salir del bucle, ya no hay más mapas
+        }
 
-		}
+        // Ahora estamos dentro de la sección [maplist], agregar mapas válidos
+        if (MapExists(line))
+        {
+            maplisttxt[mapcount] = strdup(line); // Duplicar la cadena
+            if (!maplisttxt[mapcount])
+            {
+                gi_dprintf("ERROR: No se pudo duplicar el nombre del mapa '%s'.\n", line);
+                // Opcional: manejar el error, liberar memoria, etc.
+            }
+            mapcount++;
+        }
+        else
+        {
+            gi_dprintf("WARNING: Map '%s' en 'maplist.ini' no encontrado en el servidor!\n", line);
+        }
 
-	}
-	else
-	{
-		return NULL;
-	}
+        s = strtok(NULL, "\n");
+    }
 
-	removed = 0;
-	//remove most recently played maps
-	for (i = 0; i<20 && removed != mapcount-1 && last_maps_played[i]; i++) //for last_maps_played
-	{
-		for (j=0; j < mapcount; j++)
-		{
-			if (!strcmp (maplisttxt[j],""))
-				continue;
+    free(f); // Liberar la copia del contenido
 
+    if (mapcount == 0)
+    {
+        gi_dprintf("ERROR: No se encontraron mapas válidos en 'maplist.ini'.\n");
+        return NULL;
+    }
 
+    // Excluir los últimos mapas jugados
+    for (i = 0; i < 20 && removed < mapcount - 1 && last_maps_played[i] != NULL; i++)
+    {
+        for (j = 0; j < mapcount; j++)
+        {
+            if (maplisttxt[j] && strcmp(last_maps_played[i], maplisttxt[j]) == 0)
+            {
+                free(maplisttxt[j]); // Liberar la cadena si es dinámica
+                maplisttxt[j] = NULL; // Marcar como eliminado
+                removed++;
+                break; // Pasar al siguiente mapa jugado
+            }
+        }
+    }
+    // Construir la lista de mapas posibles
+    for (x = 0; x < mapcount; x++)
+    {
+        if (maplisttxt[x] != NULL)
+        {
+            possible_maps[newmapcount] = maplisttxt[x];
+            newmapcount++;
+        }
+    }
+    // Si no hay mapas posibles después de la exclusión, considerar todos los mapas
+    if (newmapcount == 0)
+    {
+        gi_dprintf("WARNING: Todos los mapas están en la lista de últimos jugados. Reiniciando lista.\n");
+        for (x = 0; x < mapcount && x < 300; x++)
+        {
+            possible_maps[x] = maplisttxt[x];
+        }
+        newmapcount = mapcount;
+    }
+    // Seleccionar un mapa aleatorio de los posibles
+    randnum = (int)(random() * newmapcount);
+    if (randnum >= newmapcount)
+        randnum = newmapcount - 1; // Asegurar que esté dentro del rango
 
+    char *selected_map = possible_maps[randnum];
+    // Opcional: Actualizar la lista de últimos mapas jugados
+    // Aquí deberías implementar la lógica para actualizar 'last_maps_played'
 
-			if (!strcmp (last_maps_played[i], maplisttxt[j]))
-			{	
-				maplisttxt[j]= "";
-				//gi.dprintf("EEEEEEEE Removing %s\n",campaign_spots[checknum].bspname);
-				removed++;
-				break;
-			}
-		}
-	} 
-
-
-	newmapcount = 0;
-	//sort possible_maps
-	for (x=0; x < 300; x++)
-	{
-		if (!strcmp (maplisttxt[x],""))
-			continue;
-		possible_maps[newmapcount] = maplisttxt[x];
-
-		newmapcount++;
-	}
-
-/*	for (j = 0; j<50; j++)	{
-		if (possible_maps[j] > -1)	{
-			gi.dprintf ("%s\n",campaign_spots[possible_maps[j]].bspname);
-		}
-	}	*/
-	randnum = (int)(random()*newmapcount);
-
-	
-	return possible_maps[randnum];
-	
+    // Liberar memoria de mapas no seleccionados si fueron duplicados
+    for (x = 0; x < mapcount; x++)
+    {
+        if (maplisttxt[x] != NULL && maplisttxt[x] != selected_map)
+        {
+            free(maplisttxt[x]);
+        }
+    }
+    return selected_map;
 }
 
 char *Get_Next_Campaign_Map ();
