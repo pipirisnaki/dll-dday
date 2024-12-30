@@ -428,7 +428,7 @@ char *Get_Next_MaplistTxt_Map ()
 	char *maplisttxt[300];
 
 
-	maps = ReadEntFile("dday/maplist.txt");
+	maps = ReadEntFile("dday/maplist.ini");
 
 	mapcount = 0;
 
