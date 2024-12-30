@@ -592,7 +592,7 @@ void EndDMLevel (void)
 
 	if (level.campaign && campaign_winner < 0)
 	{
-		nextmap = Get_Next_Campaign_Map();
+		nextmap = Get_Next_MaplistTxt_Map();//Get_Next_Campaign_Map
 		if (nextmap != NULL)
 		{	
 			ent = G_Spawn ();
@@ -606,7 +606,7 @@ void EndDMLevel (void)
 		{	//hack job! winning team has no place to go, so pretend the losing team won, get 
 			//next map, then set everything back again
 			Last_Team_Winner = (Last_Team_Winner+1)%2;
-			nextmap = Get_Next_Campaign_Map();
+			nextmap = Get_Next_MaplistTxt_Map(); //Get_Next_Campaign_Map
 			if (nextmap != NULL)
 			{
 				Last_Team_Winner = (Last_Team_Winner+1)%2;

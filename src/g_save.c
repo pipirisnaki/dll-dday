@@ -304,7 +304,7 @@ void InitGame (void)
 
 	gi.cvar ("website", "http://www.DdayDev.com",  CVAR_SERVERINFO | CVAR_LATCH); //faf
 
-	sv_maplist = gi.cvar ("sv_maplist", "dday2 carreta eurovilla", 0); //faf: from q2 code
+	sv_maplist = gi.cvar ("sv_maplist", "carreta eurovilla", 0); //faf: from q2 code
 
 
 	maxclients  = gi.cvar ("maxclients",	"8",	CVAR_SERVERINFO | CVAR_LATCH);
